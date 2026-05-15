@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customer Setup Extractor - SPP</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'DM Sans',sans-serif; color:#2c2c2c; min-height:100vh; background:#f4f5f2; }
+.app-header { padding:16px 24px; border-bottom:1px solid #e5e7eb; background:#fff; display:flex; align-items:center; gap:12px; }
+.app-header h1 { font-size:17px; font-weight:700; letter-spacing:0.2px; color:#2c2c2c; }
+.app-header .sub { font-size:12px; color:#5c6a3a; letter-spacing:0.5px; text-transform:uppercase; font-weight:600; }
+.input-area { max-width:920px; margin:24px auto; padding:0 20px; }
+.input-area textarea { width:100%; min-height:130px; max-height:340px; resize:vertical; padding:14px; border:1px solid #dde0d5; border-radius:10px; background:#fff; color:#2c2c2c; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.6; outline:none; }
+.input-area textarea:focus { border-color:#5c6a3a; }
+.btn-row { display:flex; gap:10px; margin-top:12px; }
+.btn-primary { background:#5c6a3a; color:#fff; border:none; border-radius:8px; padding:11px 26px; font-size:14px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.btn-primary:hover { background:#4e5a31; }
+.btn-primary:disabled { opacity:0.4; cursor:wait; }
+.btn-secondary { background:transparent; color:#6b7280; border:1px solid #dde0d5; border-radius:8px; padding:11px 20px; font-size:14px; cursor:pointer; font-family:'DM Sans',sans-serif; display:none; }
+.results { max-width:920px; margin:0 auto; padding:0 20px 40px; display:none; }
+.cols { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; }
+.card { background:#fff; border-radius:12px; border:1px solid #dde0d5; padding:18px 20px; margin-bottom:16px; }
+.card-title { font-size:12px; font-weight:600; color:#6b7280; letter-spacing:0.5px; margin:0 0 12px 0; padding-bottom:8px; border-bottom:1px solid #eef0ea; text-transform:uppercase; display:flex; align-items:center; gap:8px; }
+.meta-line { display:flex; gap:12px; margin-bottom:10px; flex-wrap:wrap; align-items:center; font-size:12px; color:#6b7280; }
+.meta-line strong { color:#2c2c2c; }
+.meta-sep { color:#dde0d5; }
+.row { display:flex; align-items:center; padding:5px 0; border-bottom:0.5px solid #f3f4f1; min-height:36px; }
+.rl { font-size:13px; color:#6b7280; width:125px; flex-shrink:0; }
+.fv { font-size:14px; color:#2c2c2c; flex:1; user-select:all; -webkit-user-select:all; cursor:pointer; padding:2px 6px; border-radius:4px; word-break:break-word; }
+.fv:hover { background:#f7f8f5; }
+.fv.na { color:#c0c0c8; font-style:italic; cursor:default; }
+.fv.na:hover { background:transparent; }
+.fv.dim { color:#9ca3af; font-style:italic; }
+.fv-link { font-size:14px; color:#5c6a3a; flex:1; padding:2px 6px; border-radius:4px; text-decoration:none; word-break:break-word; font-weight:500; }
+.fv-link:hover { background:#f0f3eb; text-decoration:underline; }
+.cbtn { font-size:13px; color:#6b7280; background:#f7f8f5; border:1px solid #dde0d5; border-radius:6px; padding:5px 16px; cursor:pointer; flex-shrink:0; margin-left:8px; transition:all 0.12s; font-family:'DM Sans',sans-serif; font-weight:500; }
+.cbtn:hover { background:#eef0ea; color:#2c2c2c; }
+.cbtn.copied { background:#e8f5e9; color:#2d6a4f; border-color:#c8e6c9; }
+.cr { display:flex; align-items:center; gap:8px; padding:4px 0; font-size:14px; }
+.cr-label { flex:1; color:#2c2c2c; }
+.bg { display:inline-block; font-size:12px; font-weight:500; padding:3px 10px; border-radius:6px; white-space:nowrap; flex-shrink:0; }
+.bg-ok { background:#e8f5e9; color:#2d6a4f; }
+.bg-no { background:#ffeaea; color:#c1292e; }
+.bg-wn { background:#fff8e1; color:#92400e; }
+.del-sum { font-size:13px; padding:10px 14px; background:#f7f8f5; border-radius:8px; cursor:pointer; user-select:all; margin-top:10px; line-height:1.5; }
+.del-sum:hover { background:#eef0ea; }
+.prod-tag { display:inline-block; font-size:12px; padding:3px 10px; border-radius:6px; background:#eef3e6; color:#5c6a3a; margin-right:4px; margin-bottom:4px; }
+.note-badge { font-size:11px; font-weight:600; padding:3px 10px; border-radius:6px; background:#fff8e1; color:#92400e; margin-left:auto; }
+.step-dots { display:flex; align-items:center; gap:6px; margin-left:auto; }
+.step-dot { width:9px; height:9px; border-radius:50%; background:#dde0d5; transition:all 0.3s; }
+.step-dot.active { background:#5c6a3a; }
+.step-dot.done { background:#2d6a4f; }
+.step-label { font-size:12px; color:#9ca3af; margin-left:6px; }
+.error-box { background:#ffeaea; border:1px solid #c1292e; border-radius:10px; padding:14px 18px; margin-bottom:16px; font-size:14px; color:#c1292e; max-width:920px; margin-left:auto; margin-right:auto; display:none; }
+.action-btn { display:flex; align-items:center; gap:8px; margin-top:12px; padding:10px 18px; background:#5c6a3a; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; width:100%; justify-content:center; }
+.action-btn:hover { background:#4e5a31; }
+.action-btn.copied { background:#2d6a4f; }
+.link-btn { display:inline-flex; align-items:center; gap:6px; margin-top:10px; padding:8px 14px; background:#f7f8f5; color:#5c6a3a; border:1px solid #dde0d5; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; font-family:'DM Sans',sans-serif; text-decoration:none; }
+.link-btn:hover { background:#eef3e6; border-color:#b8c4a0; }
+.link-btn.loading { color:#9ca3af; cursor:default; border-color:#e5e7eb; }
+.bullet { font-size:13px; color:#4b5563; padding:3px 0 3px 16px; position:relative; line-height:1.5; }
+.bullet::before { content:'\2022'; position:absolute; left:2px; color:#5c6a3a; }
+.v-row { display:flex; align-items:flex-start; gap:8px; padding:5px 0; font-size:14px; border-bottom:0.5px solid #f3f4f1; }
+.v-row:last-of-type { border-bottom:none; }
+.v-label { font-weight:500; color:#2c2c2c; min-width:100px; flex-shrink:0; }
+.v-note { color:#6b7280; flex:1; font-size:13px; }
+.same-note { font-size:12px; color:#9ca3af; font-style:italic; padding:2px 0 6px; }
+.hidden { display:none; }
+@media (max-width:700px) { .cols { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="app-header">
+  <div>
+    <div class="sub">SPP</div>
+    <h1>Customer Setup Extractor</h1>
+  </div>
+  <div class="step-dots" id="stepDots" style="display:none">
+    <div class="step-dot" id="dot1"></div>
+    <div class="step-dot" id="dot2"></div>
+    <div class="step-dot" id="dot3"></div>
+    <span class="step-label" id="stepLabel"></span>
+  </div>
+</div>
+
+<!-- Input -->
+<div class="input-area">
+  <textarea id="emailInput" placeholder="Paste the email chain here..."></textarea>
+  <div class="btn-row">
+    <button class="btn-primary" id="extractBtn" onclick="handleExtract()">Extract &amp; Verify</button>
+    <button class="btn-secondary" id="clearBtn" onclick="handleClear()">Clear</button>
+  </div>
+</div>
+
+<!-- Error -->
+<div class="error-box" id="errorBox"></div>
+
+<!-- Results -->
+<div class="results" id="results">
+  <div class="cols">
+    <!-- LEFT COLUMN -->
+    <div>
+      <!-- Invoice card -->
+      <div class="card">
+        <p class="card-title">Customer / Invoice details <span class="note-badge hidden" id="proformaBadge">Proforma / Cash</span></p>
+        <div class="meta-line" id="metaLine"></div>
+        <div id="invoiceFields"></div>
+      </div>
+      <!-- Delivery card -->
+      <div class="card">
+        <p class="card-title">Delivery details</p>
+        <div class="same-note hidden" id="sameNote">Delivery address same as invoice</div>
+        <div id="deliveryFields"></div>
+        <div class="del-sum hidden" id="delSum" onclick="cpyEl(this,'dsum')"></div>
+      </div>
+      <!-- W3W card -->
+      <div class="card">
+        <p class="card-title">What3Words</p>
+        <div id="w3wFields"></div>
+      </div>
+      <!-- Products card -->
+      <div class="card hidden" id="productsCard">
+        <p class="card-title">Products of interest</p>
+        <div id="productTags"></div>
+      </div>
+    </div>
+    <!-- RIGHT COLUMN -->
+    <div>
+      <!-- Checklist card -->
+      <div class="card">
+        <p class="card-title">Information checklist</p>
+        <div id="checklistItems"></div>
+        <button class="action-btn hidden" id="repEmailBtn" onclick="cpyRepEmail()"></button>
+      </div>
+      <!-- Verification card -->
+      <div class="card">
+        <p class="card-title">Verification</p>
+        <div id="verificationItems"><span style="font-size:13px;color:#9ca3af">Awaiting extraction...</span></div>
+      </div>
+      <!-- Address notes card -->
+      <div class="card">
+        <p class="card-title">Delivery address notes</p>
+        <div id="addressBullets"><span style="font-size:13px;color:#9ca3af">Awaiting extraction...</span></div>
+        <div id="bridgeLinkWrap"></div>
+      </div>
+      <!-- Notes card -->
+      <div class="card hidden" id="notesCard">
+        <p class="card-title">Notes</p>
+        <div id="notesContent" style="font-size:13px;color:#4b5563;line-height:1.6"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Prompts ──
+const EXTRACTION_PROMPT = `You are an expert at extracting customer setup information from email chains for a timber/building materials supplier called SPP (Specialised Panel Products).
+
+Analyse the email chain and extract ALL customer information. Return ONLY a JSON object with no markdown formatting, no backticks, no preamble.
+
+{
+  "code_short_name": "string - max 20 chars. Drop 'Ltd', 'Limited', 'The' etc. Use the most recognisable part of the name. E.g. 'The Alloy Project Ltd' becomes 'Alloy Project'. 'Tom Coward' stays as 'Tom Coward'. 'Gateway Construction Services Ltd' becomes 'Gateway Construction'.",
+  "display_name": "string - full legal name. Use Ltd not Limited.",
+  "address_line1": "string - first line of invoice address (building name or number and street)",
+  "address_line2": "string - second line (area/district) or empty string",
+  "town": "string - city/town",
+  "county": "string - county or empty string",
+  "postcode": "string - postcode",
+  "contact_name": "string - main contact name",
+  "mobile": "string - mobile phone number, normalised with spaces e.g. 07957 387965",
+  "landline": "string - landline number or empty string",
+  "email": "string - customer email address",
+  "website": "string - customer website URL or empty string",
+  "delivery_address_line1": "string",
+  "delivery_address_line2": "string",
+  "delivery_town": "string",
+  "delivery_county": "string",
+  "delivery_postcode": "string",
+  "delivery_contact_name": "string",
+  "delivery_contact_number": "string",
+  "what3words": "string - just the three words e.g. basket.unique.gives - no slashes",
+  "delivery_opening_hours": "string - short, e.g. '08:00-18:00 by appointment' or 'Not confirmed'",
+  "forklift_on_site": "string - short, e.g. 'Yes', 'No - manual offload', or 'Not confirmed'",
+  "vehicle_access": "string - short summary, e.g. 'Curtain-sider OK, tight residential road' or 'Not confirmed'",
+  "delivery_restrictions": "string - short, e.g. 'School street 08:30-09:30, 15:00-16:00' or 'Not confirmed'",
+  "sales_rep": "string - the SPP staff member who forwarded the customer setup request internally",
+  "products_of_interest": ["array of strings"],
+  "suggested_customer_type": "string - pick the BEST match from this exact list based on what the customer does and what they're ordering: Unknown, Joinery & Shopfitting, Architect / Designer / Specifier, Laser - Crafts, Laser - Die Boards, Flightcase Makers, Formwork, Staging, Access Towers, Rail - Rolling Stock, Rail - Infrastructure, Construction, Marquee, Hoarding, Trailers, FR Plywood, Sports & Rebound, Exhibition, Plywood - General, Timber Cladding - Domestic, Timber Cladding - Commercial, Timber - General, Flooring - Exhibition Contractor, Flooring - End User, Flooring - Venue, Flooring - Marquee, Flooring - Experiential Marketing, Manufacturing, Material Handling & Storage, Importer / Merchant, Fencing, Furniture Manufacturer, Small End User - Plywood, Display, Vehicle Builders, Building Interiors - Walls/Floors, Livestock / Agriculture, House Builder, Main Contractor, Sub Contractor, Commission, Decking Installer - Commercial, Decking Installer - Domestic, Set Builders, Scaffold, Flooring, Woodworkers / Processors, Education Sector, Roofing Contractor, Sauna, Cabin & Outdoor Studios, Rail - LUL Contractor, Boat Builders, Kitchen Manufacturers. If unsure, use 'Unknown'.",
+  "is_proforma": true,
+  "delivery_same_as_invoice": true,
+  "delivery_notes_summary": "string - one-liner for copy-paste e.g. '08:00-18:00. No forklift. Curtain-sider OK. School street 08:30-09:30, 15:00-16:00.'",
+  "checklist": {
+    "full_business_name": true,
+    "full_invoice_address": true,
+    "invoice_contact_name_and_telephone": true,
+    "full_delivery_address": true,
+    "what3words": true,
+    "delivery_contact_name_and_telephone": true,
+    "delivery_opening_hours": true,
+    "forklift_on_site": true,
+    "vehicle_access": true,
+    "delivery_restrictions": true
+  },
+  "raw_notes": "string - brief context: what they ordered, timing, anything useful. Max 2 sentences."
+}
+
+RULES:
+- Phone numbers in UK format with spaces
+- If delivery = invoice, populate both and set delivery_same_as_invoice true
+- Checklist reflects what the CUSTOMER provided, not what you inferred
+- Use Ltd not Limited
+- code_short_name: max 20 chars, drop Ltd/Limited/The, keep the recognisable core
+- Keep all text SHORT. No long paragraphs. Delivery fields should be brief summaries.
+- If info wasn't provided, use "Not confirmed" rather than empty string for delivery fields
+
+CRITICAL: Return ONLY the JSON. Start with { and end with }.`;
+
+const VERIFY_PROMPT = `You are verifying contact details for a new customer of a timber supplier. Search the web to verify the email, phone, and company details.
+
+Also assess the delivery address for large vehicle access (curtain-sided lorries carrying heavy sheet materials). Keep observations SHORT - max 4 bullet points.
+
+Return ONLY a JSON object, no markdown, no backticks:
+{
+  "email_check": {"status": "match" or "unverified" or "mismatch", "note": "max 12 words"},
+  "phone_check": {"status": "match" or "unverified" or "mismatch", "note": "max 12 words"},
+  "companies_house": {"status": "match" or "unverified" or "not_applicable", "note": "max 12 words"},
+  "website_check": {"status": "match" or "unverified" or "not_applicable", "note": "max 12 words"},
+  "address_bullets": ["array of 3-4 short bullet strings about delivery access, e.g. 'Residential street - smaller vehicle may be needed', 'Tight corners noted by customer', 'School street restrictions apply'"]
+}
+
+CRITICAL: Return ONLY the JSON. Start with { and end with }.`;
+
+// ── State ──
+let data = null;
+let verification = null;
+let bridgeUrl = null;
+let copiedTimers = {};
+
+// ── Clipboard ──
+function doClip(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:none;outline:none;opacity:0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  ta.setSelectionRange(0, ta.value.length);
+  try { document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+}
+
+function cpy(text, id) {
+  doClip(text);
+  var btn = document.querySelector('[data-cpy="'+id+'"]');
+  if (btn) {
+    btn.textContent = 'Copied';
+    btn.classList.add('copied');
+    clearTimeout(copiedTimers[id]);
+    copiedTimers[id] = setTimeout(function(){ btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1200);
+  }
+}
+
+function cpyEl(el, id) {
+  doClip(el.textContent);
+  var orig = el.textContent;
+  el.textContent = 'Copied!';
+  setTimeout(function(){ el.textContent = orig; }, 1200);
+}
+
+function cpyRepEmail() {
+  var btn = document.getElementById('repEmailBtn');
+  doClip(buildRepEmail());
+  btn.textContent = 'Copied to clipboard!';
+  btn.classList.add('copied');
+  setTimeout(function(){ btn.textContent = btn.getAttribute('data-label'); btn.classList.remove('copied'); }, 1500);
+}
+
+// ── Geocode ──
+async function geocodePostcode(postcode) {
+  if (!postcode) return null;
+  var clean = postcode.replace(/\s+/g, '');
+  try {
+    var resp = await fetch('https://api.postcodes.io/postcodes/' + clean);
+    var json = await resp.json();
+    if (json.status === 200 && json.result) return { lat: json.result.latitude, lng: json.result.longitude };
+  } catch(e) {}
+  return null;
+}
+
+// ── API call ──
+async function callClaude(systemPrompt, userContent, useSearch) {
+  var body = {
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 1000,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userContent }]
+  };
+  if (useSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+  var resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  var json = await resp.json();
+  if (json.error) throw new Error(json.error.message || 'API error');
+  var textBlocks = (json.content || []).filter(function(b){ return b.type === 'text'; }).map(function(b){ return b.text; });
+  var raw = textBlocks.join('\n').replace(/```json|```/g, '').trim();
+  var m = raw.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error('No JSON found in response');
+  return JSON.parse(m[0]);
+}
+
+// ── Step dots ──
+function setStep(n) {
+  var dots = document.getElementById('stepDots');
+  var labels = ['', 'Extracting...', 'Verifying...', 'Complete'];
+  if (n > 0) {
+    dots.style.display = 'flex';
+    for (var i = 1; i <= 3; i++) {
+      var d = document.getElementById('dot' + i);
+      d.className = 'step-dot' + (n > i ? ' done' : (n === i ? ' active' : ''));
+    }
+    document.getElementById('stepLabel').textContent = labels[n] || '';
+  } else {
+    dots.style.display = 'none';
+  }
+}
+
+// ── Row builder ──
+function makeRow(label, value, id, isLink) {
+  var empty = !value || value.trim() === '' || value === 'Not confirmed';
+  var dimmed = value === 'Not confirmed';
+  var row = document.createElement('div');
+  row.className = 'row';
+
+  var rl = document.createElement('span');
+  rl.className = 'rl';
+  rl.textContent = label;
+  row.appendChild(rl);
+
+  if (isLink && value && !empty) {
+    var a = document.createElement('a');
+    a.className = 'fv fv-link';
+    a.href = value.startsWith('http') ? value : 'https://' + value;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = value;
+    a.setAttribute('data-fid', id);
+    row.appendChild(a);
+  } else {
+    var fv = document.createElement('span');
+    fv.className = 'fv' + (empty && !dimmed ? ' na' : '') + (dimmed ? ' dim' : '');
+    fv.textContent = empty && !dimmed ? '\u2014' : value;
+    fv.setAttribute('data-fid', id);
+    if (!empty || dimmed) {
+      fv.onclick = function() {
+        var range = document.createRange();
+        range.selectNodeContents(fv);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      };
+    }
+    row.appendChild(fv);
+  }
+
+  if (!empty && !dimmed) {
+    var btn = document.createElement('button');
+    btn.className = 'cbtn';
+    btn.textContent = 'Copy';
+    btn.setAttribute('data-cpy', id);
+    btn.onclick = function(){ cpy(value, id); };
+    row.appendChild(btn);
+  }
+
+  return row;
+}
+
+// ── Build rep email ──
+function buildRepEmail() {
+  if (!data) return '';
+  var CL = {
+    full_business_name: 'Full business name',
+    full_invoice_address: 'Full invoice address',
+    invoice_contact_name_and_telephone: 'Invoice contact name and telephone',
+    full_delivery_address: 'Full delivery address',
+    what3words: 'What3Words delivery address',
+    delivery_contact_name_and_telephone: 'Delivery contact name and telephone',
+    delivery_opening_hours: 'Delivery address opening hours',
+    forklift_on_site: 'Is there a forklift on site?',
+    vehicle_access: 'Is there access for large/curtain-sided vehicles?',
+    delivery_restrictions: 'Any delivery restrictions?'
+  };
+  var missing = [];
+  for (var k in CL) { if (!data.checklist || !data.checklist[k]) missing.push(CL[k]); }
+  if (missing.length === 0) return '';
+  var rep = data.sales_rep || 'team';
+  var custName = data.display_name || 'the customer';
+  return 'Hi ' + rep + ',\n\nCould you get the following from ' + custName + ' please?\n\n' + missing.map(function(l){ return '\u2022 ' + l; }).join('\n') + '\n\nThanks';
+}
+
+// ── Render results ──
+function renderResults() {
+  if (!data) return;
+
+  // Show results, clear btn
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('clearBtn').style.display = 'inline-block';
+
+  // Proforma badge
+  var badge = document.getElementById('proformaBadge');
+  if (data.is_proforma) badge.classList.remove('hidden'); else badge.classList.add('hidden');
+
+  // Meta line (rep + suggested type)
+  var meta = document.getElementById('metaLine');
+  meta.innerHTML = '';
+  if (data.sales_rep) {
+    meta.innerHTML += 'Rep: <strong>' + esc(data.sales_rep) + '</strong>';
+  }
+  if (data.sales_rep && data.suggested_customer_type) {
+    meta.innerHTML += '<span class="meta-sep">|</span>';
+  }
+  if (data.suggested_customer_type) {
+    meta.innerHTML += 'Suggested type: <strong>' + esc(data.suggested_customer_type) + '</strong>';
+  }
+
+  // Invoice fields
+  var inv = document.getElementById('invoiceFields');
+  inv.innerHTML = '';
+  inv.appendChild(makeRow('Code / short name', data.code_short_name, 'code'));
+  inv.appendChild(makeRow('Display name', data.display_name, 'display'));
+  inv.appendChild(makeRow('Address line 1', data.address_line1, 'addr1'));
+  inv.appendChild(makeRow('Address line 2', data.address_line2, 'addr2'));
+  inv.appendChild(makeRow('Town', data.town, 'town'));
+  inv.appendChild(makeRow('County', data.county, 'county'));
+  inv.appendChild(makeRow('Postcode', data.postcode, 'postcode'));
+  inv.appendChild(makeRow('Contact name', data.contact_name, 'contact'));
+  inv.appendChild(makeRow('Mobile', data.mobile, 'mobile'));
+  if (data.landline) inv.appendChild(makeRow('Landline', data.landline, 'landline'));
+  inv.appendChild(makeRow('Email', data.email, 'email'));
+  if (data.website) inv.appendChild(makeRow('Website', data.website, 'website', true));
+
+  // Delivery
+  var sn = document.getElementById('sameNote');
+  if (data.delivery_same_as_invoice) sn.classList.remove('hidden'); else sn.classList.add('hidden');
+
+  var del = document.getElementById('deliveryFields');
+  del.innerHTML = '';
+  del.appendChild(makeRow('Address line 1', data.delivery_address_line1, 'daddr1'));
+  del.appendChild(makeRow('Address line 2', data.delivery_address_line2, 'daddr2'));
+  del.appendChild(makeRow('Town', data.delivery_town, 'dtown'));
+  del.appendChild(makeRow('County', data.delivery_county, 'dcounty'));
+  del.appendChild(makeRow('Postcode', data.delivery_postcode, 'dpostcode'));
+  del.appendChild(makeRow('Contact', data.delivery_contact_name, 'dcontact'));
+  del.appendChild(makeRow('Phone', data.delivery_contact_number, 'dphone'));
+  del.appendChild(makeRow('Opening hours', data.delivery_opening_hours, 'hours'));
+  del.appendChild(makeRow('Forklift', data.forklift_on_site, 'fork'));
+  del.appendChild(makeRow('Vehicle access', data.vehicle_access, 'vehicle'));
+  del.appendChild(makeRow('Restrictions', data.delivery_restrictions, 'restrict'));
+
+  var ds = document.getElementById('delSum');
+  if (data.delivery_notes_summary) {
+    ds.textContent = data.delivery_notes_summary;
+    ds.classList.remove('hidden');
+  } else {
+    ds.classList.add('hidden');
+  }
+
+  // W3W
+  var w3w = document.getElementById('w3wFields');
+  w3w.innerHTML = '';
+  w3w.appendChild(makeRow('Address', data.what3words, 'w3w'));
+
+  // Products
+  var pc = document.getElementById('productsCard');
+  var pt = document.getElementById('productTags');
+  if (data.products_of_interest && data.products_of_interest.length > 0) {
+    pc.classList.remove('hidden');
+    pt.innerHTML = data.products_of_interest.map(function(p){ return '<span class="prod-tag">' + esc(p) + '</span>'; }).join('');
+  } else {
+    pc.classList.add('hidden');
+  }
+
+  // Checklist
+  renderChecklist();
+
+  // Notes
+  var nc = document.getElementById('notesCard');
+  if (data.raw_notes) {
+    nc.classList.remove('hidden');
+    document.getElementById('notesContent').textContent = data.raw_notes;
+  } else {
+    nc.classList.add('hidden');
+  }
+}
+
+function renderChecklist() {
+  var CL = {
+    full_business_name: 'Full business name',
+    full_invoice_address: 'Full invoice address',
+    invoice_contact_name_and_telephone: 'Invoice contact & telephone',
+    full_delivery_address: 'Full delivery address',
+    what3words: 'What3Words address',
+    delivery_contact_name_and_telephone: 'Delivery contact & telephone',
+    delivery_opening_hours: 'Delivery opening hours',
+    forklift_on_site: 'Forklift on site',
+    vehicle_access: 'Vehicle access',
+    delivery_restrictions: 'Delivery restrictions'
+  };
+  var wrap = document.getElementById('checklistItems');
+  wrap.innerHTML = '';
+  var provided = [], missing = [];
+  for (var k in CL) {
+    if (data.checklist && data.checklist[k]) provided.push(CL[k]); else missing.push(CL[k]);
+  }
+  provided.forEach(function(label) {
+    wrap.innerHTML += '<div class="cr"><span class="cr-label">' + esc(label) + '</span><span class="bg bg-ok">Provided</span></div>';
+  });
+  if (missing.length > 0 && provided.length > 0) wrap.innerHTML += '<div style="height:8px"></div>';
+  missing.forEach(function(label) {
+    wrap.innerHTML += '<div class="cr"><span class="cr-label">' + esc(label) + '</span><span class="bg bg-no">Missing</span></div>';
+  });
+
+  var btn = document.getElementById('repEmailBtn');
+  if (missing.length > 0) {
+    var lbl = 'Copy missing info email for ' + (data.sales_rep || 'rep');
+    btn.textContent = lbl;
+    btn.setAttribute('data-label', lbl);
+    btn.classList.remove('hidden');
+  } else {
+    btn.classList.add('hidden');
+  }
+}
+
+function renderVerification() {
+  var wrap = document.getElementById('verificationItems');
+  wrap.innerHTML = '';
+  if (!verification) { wrap.innerHTML = '<span style="font-size:13px;color:#9ca3af">Searching...</span>'; return; }
+
+  var checks = [
+    { label: 'Email', status: verification.email_check.status, note: verification.email_check.note },
+    { label: 'Phone', status: verification.phone_check.status, note: verification.phone_check.note },
+    { label: 'Companies House', status: verification.companies_house.status, note: verification.companies_house.note },
+    { label: 'Website', status: verification.website_check.status, note: verification.website_check.note }
+  ];
+
+  var match = checks.filter(function(c){ return c.status === 'match'; });
+  var other = checks.filter(function(c){ return c.status !== 'match'; });
+
+  match.forEach(function(c) {
+    wrap.innerHTML += '<div class="v-row"><span class="v-label">' + esc(c.label) + '</span><span class="v-note">' + esc(c.note) + '</span><span class="bg bg-ok">Match</span></div>';
+  });
+  if (other.length > 0 && match.length > 0) wrap.innerHTML += '<div style="height:4px"></div>';
+  other.forEach(function(c) {
+    var cls = c.status === 'mismatch' ? 'bg-no' : 'bg-wn';
+    var txt = c.status === 'mismatch' ? 'Mismatch' : 'Unverified';
+    wrap.innerHTML += '<div class="v-row"><span class="v-label">' + esc(c.label) + '</span><span class="v-note">' + esc(c.note) + '</span><span class="bg ' + cls + '">' + txt + '</span></div>';
+  });
+
+  // Address bullets
+  var ab = document.getElementById('addressBullets');
+  ab.innerHTML = '';
+  if (verification.address_bullets && verification.address_bullets.length > 0) {
+    verification.address_bullets.forEach(function(b) {
+      ab.innerHTML += '<div class="bullet">' + esc(b) + '</div>';
+    });
+  } else {
+    ab.innerHTML = '<span style="font-size:13px;color:#9ca3af">No specific concerns noted</span>';
+  }
+}
+
+function renderBridgeLink() {
+  var wrap = document.getElementById('bridgeLinkWrap');
+  wrap.innerHTML = '';
+  if (!data || !data.delivery_postcode) return;
+  if (bridgeUrl) {
+    wrap.innerHTML = '<a href="' + bridgeUrl + '" target="_blank" rel="noopener noreferrer" class="link-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Check low bridges near ' + esc(data.delivery_postcode) + '</a>';
+  } else {
+    wrap.innerHTML = '<div class="link-btn loading"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Loading bridge map...</div>';
+  }
+}
+
+// ── Escape HTML ──
+function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ── Main handler ──
+async function handleExtract() {
+  var input = document.getElementById('emailInput').value.trim();
+  if (!input) return;
+
+  // Reset
+  data = null; verification = null; bridgeUrl = null;
+  document.getElementById('errorBox').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('extractBtn').disabled = true;
+  document.getElementById('extractBtn').textContent = 'Extracting...';
+  setStep(1);
+
+  try {
+    // Step 1: Extract
+    data = await callClaude(EXTRACTION_PROMPT, input, false);
+    renderResults();
+    setStep(2);
+
+    // Geocode for bridge link
+    var pc = data.delivery_postcode || data.postcode;
+    if (pc) {
+      geocodePostcode(pc).then(function(coords) {
+        if (coords) {
+          bridgeUrl = 'https://www.google.com/maps/d/viewer?mid=17FAITKL83Ozz19QAljbfqcRkmu7PVhL2&femb=1&ll=' + coords.lat + '%2C' + coords.lng + '&z=15';
+        }
+        renderBridgeLink();
+      });
+    }
+    renderBridgeLink();
+
+    // Step 2: Verify
+    document.getElementById('verificationItems').innerHTML = '<span style="font-size:13px;color:#9ca3af">Searching...</span>';
+    try {
+      verification = await callClaude(
+        VERIFY_PROMPT,
+        'Customer: ' + data.display_name + '\nEmail: ' + data.email + '\nPhone: ' + data.mobile + '\nAddress: ' + data.address_line1 + ', ' + data.postcode + '\nWebsite: ' + (data.website || 'N/A') + '\nDelivery address: ' + data.delivery_address_line1 + ', ' + data.delivery_postcode + '\nCustomer access notes: ' + (data.vehicle_access || 'None') + '\nCustomer restrictions: ' + (data.delivery_restrictions || 'None'),
+        true
+      );
+    } catch(e) {
+      verification = {
+        email_check: { status: 'unverified', note: 'Check unavailable' },
+        phone_check: { status: 'unverified', note: 'Check unavailable' },
+        companies_house: { status: 'unverified', note: e.message },
+        website_check: { status: 'unverified', note: '' },
+        address_bullets: ['Verification unavailable']
+      };
+    }
+    renderVerification();
+    setStep(3);
+
+  } catch(e) {
+    document.getElementById('errorBox').textContent = e.message;
+    document.getElementById('errorBox').style.display = 'block';
+    setStep(0);
+  }
+
+  document.getElementById('extractBtn').disabled = false;
+  document.getElementById('extractBtn').textContent = 'Extract & Verify';
+}
+
+function handleClear() {
+  document.getElementById('emailInput').value = '';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('clearBtn').style.display = 'none';
+  document.getElementById('errorBox').style.display = 'none';
+  data = null; verification = null; bridgeUrl = null;
+  setStep(0);
+}
+</script>
+</body>
+</html>
