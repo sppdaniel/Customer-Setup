@@ -89,6 +89,11 @@ body { font-family:'DM Sans',sans-serif; color:#2c2c2c; min-height:100vh; backgr
 
 <!-- Input -->
 <div class="input-area">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+    <label for="apiKey" style="font-size:13px;color:#6b7280;white-space:nowrap">API Key</label>
+    <input type="password" id="apiKey" placeholder="sk-ant-..." style="flex:1;padding:9px 14px;border:1px solid #dde0d5;border-radius:8px;background:#fff;color:#2c2c2c;font-family:'JetBrains Mono',monospace;font-size:12px;outline:none" onfocus="this.style.borderColor='#5c6a3a'" onblur="this.style.borderColor='#dde0d5'">
+    <button onclick="toggleKeyVis()" style="background:#f7f8f5;border:1px solid #dde0d5;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;color:#6b7280;font-family:'DM Sans',sans-serif" id="toggleKeyBtn">Show</button>
+  </div>
   <textarea id="emailInput" placeholder="Paste the email chain here..."></textarea>
   <div class="btn-row">
     <button class="btn-primary" id="extractBtn" onclick="handleExtract()">Extract &amp; Verify</button>
@@ -293,6 +298,8 @@ async function geocodePostcode(postcode) {
 
 // ── API call ──
 async function callClaude(systemPrompt, userContent, useSearch) {
+  var apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) throw new Error('Please enter your Anthropic API key');
   var body = {
     model: 'claude-sonnet-4-20250514',
     max_tokens: 1000,
@@ -302,7 +309,12 @@ async function callClaude(systemPrompt, userContent, useSearch) {
   if (useSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
   var resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
     body: JSON.stringify(body)
   });
   var json = await resp.json();
@@ -312,6 +324,13 @@ async function callClaude(systemPrompt, userContent, useSearch) {
   var m = raw.match(/\{[\s\S]*\}/);
   if (!m) throw new Error('No JSON found in response');
   return JSON.parse(m[0]);
+}
+
+function toggleKeyVis() {
+  var inp = document.getElementById('apiKey');
+  var btn = document.getElementById('toggleKeyBtn');
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'Hide'; }
+  else { inp.type = 'password'; btn.textContent = 'Show'; }
 }
 
 // ── Step dots ──
